@@ -1,24 +1,10 @@
 import { Link } from 'react-router-dom';
+import PublicHeader from '../../components/layout/PublicHeader';
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
-      <header className="w-full py-4 px-6 md:px-12 flex justify-between items-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center font-bold shadow-md">N</div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
-            NEC LEAP
-          </h1>
-        </div>
-        <nav className="flex gap-4 items-center">
-          <Link to="/calculator" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:underline">
-            GPA Calculator
-          </Link>
-          <Link to="/admin/login" className="px-4 py-2 rounded-lg text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors">
-            Admin Login
-          </Link>
-        </nav>
-      </header>
+      <PublicHeader />
 
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 py-20 relative z-10 max-w-4xl mx-auto">
         <h2 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight text-zinc-900 dark:text-zinc-50">

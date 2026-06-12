@@ -13,6 +13,21 @@ const SEMESTERS = ['1', '2'];
 export default function UploadPdf() {
   const { token, user } = useAuth();
   
+  const [file, setFile] = useState(null);
+  const [teacherName, setTeacherName] = useState(user?.name || '');
+  const [branch, setBranch] = useState('');
+  const [year, setYear] = useState('');
+  const [semester, setSemester] = useState('');
+  const [subject, setSubject] = useState('');
+  const [unit, setUnit] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [dragActive, setDragActive] = useState(false);
+
   // Fetch branches dynamically from server
   const { data: branches = DEFAULT_BRANCHES } = useQuery({
     queryKey: ['branches'],
@@ -21,20 +36,19 @@ export default function UploadPdf() {
       return res.data.map(b => (typeof b === 'string' ? b : b.name));
     }
   });
-  
-  const [file, setFile] = useState(null);
-  const [teacherName, setTeacherName] = useState(user?.name || '');
-  const [branch, setBranch] = useState('');
-  const [year, setYear] = useState('');
-  const [semester, setSemester] = useState('');
-  const [subject, setSubject] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [dragActive, setDragActive] = useState(false);
+
+  // Fetch subjects dynamically based on selected branch, year, semester
+  const { data: subjectsList = [] } = useQuery({
+    queryKey: ['subjectsList', branch, year, semester],
+    queryFn: async () => {
+      if (!branch || !year || !semester) return [];
+      const res = await axios.get(`${API_URL}/subjects`, {
+        params: { branch, year, semester }
+      });
+      return res.data;
+    },
+    enabled: !!(branch && year && semester)
+  });
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -109,6 +123,7 @@ export default function UploadPdf() {
       
       // Reset form
       setFile(null);
+      setUnit('');
       setTitle('');
       setDescription('');
       setSubject('');
@@ -230,22 +245,61 @@ export default function UploadPdf() {
 
             <div className="space-y-2">
               <label className="text-sm font-semibold">Subject</label>
-              <Input 
-                placeholder="e.g. Database Management Systems" 
-                value={subject}
+              <select 
+                value={subject} 
                 onChange={(e) => setSubject(e.target.value)}
+                className="w-full h-10 px-3 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-black text-zinc-800 dark:text-zinc-200"
                 required
-              />
+                disabled={!branch || !year || !semester}
+              >
+                <option value="">
+                  {!branch || !year || !semester 
+                    ? "Select Branch, Year, and Semester first" 
+                    : "Select Subject"}
+                </option>
+                {Array.from(new Set(subjectsList.map(s => s.subject_name))).map(subName => (
+                  <option key={subName} value={subName}>
+                    {subName}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">PDF Title</label>
-              <Input 
-                placeholder="e.g. Unit 1: DBMS Introduction" 
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Unit / Section</label>
+                <select 
+                  value={unit} 
+                  onChange={(e) => {
+                    setUnit(e.target.value);
+                    if (e.target.value && e.target.value !== 'Other') {
+                      const cleanTitle = title.replace(/^Unit \d+:?\s*/i, '');
+                      setTitle(`${e.target.value}${cleanTitle ? `: ${cleanTitle}` : ''}`);
+                    }
+                  }}
+                  className="w-full h-10 px-3 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  required
+                >
+                  <option value="">Select Unit</option>
+                  <option value="Unit 1">Unit 1</option>
+                  <option value="Unit 2">Unit 2</option>
+                  <option value="Unit 3">Unit 3</option>
+                  <option value="Unit 4">Unit 4</option>
+                  <option value="Unit 5">Unit 5</option>
+                  <option value="Unit 6">Unit 6</option>
+                  <option value="Other">Other / Full Notes</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">PDF Title</label>
+                <Input 
+                  placeholder="e.g. DBMS Introduction" 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

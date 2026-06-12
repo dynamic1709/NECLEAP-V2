@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { API_URL } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
+import PublicHeader from '../../components/layout/PublicHeader';
+import { downloadPdf } from '../../lib/downloadHelper';
 
 const DEFAULT_BRANCHES = ['CSE', 'AIML', 'AI', 'DS', 'IT', 'ECE', 'EEE', 'MECH', 'CIVIL'];
 const YEARS = ['1', '2', '3', '4'];
@@ -75,18 +77,19 @@ export default function Explorer() {
   });
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors py-20 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300 flex flex-col">
+      <PublicHeader />
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8">
         
         {/* Navigation / Header */}
-        <header className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-6">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
           <div>
-            <Link to="/" className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 hover:underline">← Back to Home</Link>
-            <h1 className="text-4xl font-extrabold tracking-tight mt-2">PDF Explorer</h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">PDF Explorer</h1>
+            <p className="text-sm text-zinc-500 mt-1">Select branch, year, semester, and subject to browse notes.</p>
           </div>
-          <div className="flex gap-2">
+          <div>
             <Link to="/search">
-              <Button variant="secondary" size="sm" className="border-zinc-300 dark:border-zinc-700">Search PDFs</Button>
+              <Button variant="secondary" size="sm" className="border-zinc-300 dark:border-zinc-700 font-semibold">Search PDFs</Button>
             </Link>
           </div>
         </header>
@@ -184,17 +187,17 @@ export default function Explorer() {
               <p className="text-zinc-500 text-sm">No subjects found for this selection.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {subjects.map(sub => (
+                {Array.from(new Set(subjects.map(s => s.subject_name.trim()))).map((subjectName) => (
                   <button
-                    key={sub.id}
-                    onClick={() => setSelectedSubject(sub.subject_name)}
+                    key={subjectName}
+                    onClick={() => setSelectedSubject(subjectName)}
                     className={`py-2.5 px-4 rounded-xl border text-sm font-medium transition-all ${
-                      selectedSubject === sub.subject_name 
+                      selectedSubject === subjectName 
                         ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-md' 
                         : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
-                    {sub.subject_name}
+                    {subjectName}
                   </button>
                 ))}
               </div>
@@ -260,16 +263,19 @@ export default function Explorer() {
                         <span>Downloads: {pdf.downloads}</span>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <Link to={`/pdf/${pdf.slug}`} className="flex-1">
+                        <Link to={`/pdf/${pdf.slug}?branch=${selectedBranch}`} className="flex-1">
                           <Button size="sm" className="w-full bg-black text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100 text-xs font-semibold">
                             View PDF
                           </Button>
                         </Link>
-                        <a href={pdf.storage_url} download className="flex-1">
-                          <Button size="sm" variant="secondary" className="w-full text-xs font-semibold border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                            Download
-                          </Button>
-                        </a>
+                        <Button 
+                          onClick={() => downloadPdf(pdf)}
+                          size="sm" 
+                          variant="secondary" 
+                          className="flex-1 text-xs font-semibold border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        >
+                          Download
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

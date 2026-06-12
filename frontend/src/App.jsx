@@ -15,6 +15,7 @@ import Settings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
 import PdfDetail from './pages/public/PdfDetail';
 import Calculator from './pages/public/Calculator';
+import Results from './pages/public/Results';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/pdf/:slug" element={<PdfDetail />} />
             <Route path="/calculator" element={<Calculator />} />
+            <Route path="/results" element={<Results />} />
             
             {/* Admin Login */}
             <Route path="/admin/login" element={<Login />} />

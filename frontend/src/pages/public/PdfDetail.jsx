@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { API_URL } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import PublicHeader from '../../components/layout/PublicHeader';
+import { downloadPdf } from '../../lib/downloadHelper';
 
 export default function PdfDetail() {
   const { slug } = useParams();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const selectedBranch = queryParams.get('branch');
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const currentUrl = window.location.href;
@@ -53,28 +58,40 @@ export default function PdfDetail() {
   const displayPdfUrl = pdf.storage_url;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 py-20 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300 flex flex-col">
+      <PublicHeader />
+      
+      <div className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6">
         {/* Header */}
-        <header className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-6">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
           <div>
-            <Link to="/explorer" className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 hover:underline">← Back to Explorer</Link>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-2">{pdf.pdf_title}</h1>
-            <p className="text-zinc-500 mt-1">{pdf.subject} • By {pdf.teacher_name}</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">{pdf.pdf_title}</h1>
+            <p className="text-zinc-500 mt-1 text-sm">{pdf.subject} • By {pdf.teacher_name}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={handleCopyLink} className="border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={handleCopyLink} 
+              className="flex-1 sm:flex-initial text-xs border-zinc-200 dark:border-zinc-800 font-medium"
+            >
               {copied ? 'Copied! ✅' : 'Copy Link'}
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setShowQr(!showQr)} className="border-zinc-200 dark:border-zinc-800">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => setShowQr(!showQr)} 
+              className="flex-1 sm:flex-initial text-xs border-zinc-200 dark:border-zinc-800 font-medium"
+            >
               {showQr ? 'Hide QR' : 'QR Code'}
             </Button>
-            <a href={displayPdfUrl} onClick={incrementDownloadCount} download target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="bg-black text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100 font-semibold">
-                Download Notes
-              </Button>
-            </a>
+            <Button 
+              onClick={() => downloadPdf(pdf)}
+              size="sm" 
+              className="flex-1 sm:flex-initial text-xs bg-black text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100 font-bold"
+            >
+              Download Notes
+            </Button>
           </div>
         </header>
 
@@ -95,7 +112,7 @@ export default function PdfDetail() {
               <CardHeader className="bg-zinc-50 dark:bg-zinc-800/40 py-3 border-b border-zinc-200 dark:border-zinc-800">
                 <CardTitle className="text-sm font-bold">Built-In PDF Viewer</CardTitle>
               </CardHeader>
-              <CardContent className="p-0 h-[600px]">
+              <CardContent className="p-0 h-[400px] sm:h-[600px]">
                 {displayPdfUrl ? (
                   <iframe 
                     src={displayPdfUrl} 
@@ -129,7 +146,11 @@ export default function PdfDetail() {
                 <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 dark:border-zinc-800 pt-4">
                   <div>
                     <label className="text-xs font-semibold text-zinc-400 uppercase">Branch</label>
-                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{pdf.branch}</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      {selectedBranch || (pdf.branch && pdf.branch.startsWith(',') && pdf.branch.endsWith(',')
+                        ? pdf.branch.split(',').filter(Boolean).join(', ')
+                        : pdf.branch)}
+                    </p>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-zinc-400 uppercase">Academic Year</label>

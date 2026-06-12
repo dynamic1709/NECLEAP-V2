@@ -84,10 +84,22 @@ CREATE POLICY "Super admin can do everything on profiles" ON profiles
 CREATE POLICY "Subjects are viewable by everyone" ON subjects 
     FOR SELECT USING (true);
 
--- Super Admin can manage subjects
-CREATE POLICY "Super admin can manage subjects" ON subjects 
-    FOR ALL USING (
-        ((auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin')
+-- Admins can manage subjects (both super_admin and teacher_admin)
+CREATE POLICY "Admins can manage subjects" ON subjects 
+    FOR ALL TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+              AND profiles.role IN ('super_admin', 'teacher_admin')
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+              AND profiles.role IN ('super_admin', 'teacher_admin')
+        )
     );
 
 -- PDFs:
@@ -99,31 +111,46 @@ CREATE POLICY "Approved PDFs are viewable by everyone" ON pdfs
 CREATE POLICY "Users can view their own PDFs" ON pdfs 
     FOR SELECT USING (auth.uid() = uploaded_by);
 
--- Super admin can view all PDFs
-CREATE POLICY "Super admin can view all PDFs" ON pdfs 
-    FOR SELECT USING (
-        ((auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin')
+-- Admins can view all PDFs
+CREATE POLICY "Admins can view all PDFs" ON pdfs 
+    FOR SELECT TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+              AND profiles.role IN ('super_admin', 'teacher_admin')
+        )
     );
 
 -- Teachers/Admins can insert PDFs
 CREATE POLICY "Authenticated users can insert PDFs" ON pdfs 
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
--- Teachers can update their own PDFs (if not approved yet, or depends on rules)
+-- Teachers can update their own PDFs
 CREATE POLICY "Users can update their own PDFs" ON pdfs 
     FOR UPDATE USING (auth.uid() = uploaded_by);
 
--- Super admin can update any PDF (e.g. approve/reject)
-CREATE POLICY "Super admin can update any PDF" ON pdfs 
-    FOR UPDATE USING (
-        ((auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin')
+-- Admins can update any PDF (e.g. approve/reject)
+CREATE POLICY "Admins can update any PDF" ON pdfs 
+    FOR UPDATE TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+              AND profiles.role IN ('super_admin', 'teacher_admin')
+        )
     );
 
--- Super admin and owner can delete PDF
-CREATE POLICY "Users can delete their own PDFs or Super Admin" ON pdfs 
-    FOR DELETE USING (
+-- Admins or owner can delete PDF
+CREATE POLICY "Admins or owners can delete PDFs" ON pdfs 
+    FOR DELETE TO authenticated
+    USING (
         auth.uid() = uploaded_by OR 
-        ((auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin')
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+              AND profiles.role IN ('super_admin', 'teacher_admin')
+        )
     );
 
 -- Activity Logs:

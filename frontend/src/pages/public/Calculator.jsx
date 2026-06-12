@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import PublicHeader from '../../components/layout/PublicHeader';
 
 const DEFAULT_BRANCHES = ['CSE', 'AIML', 'AI', 'DS', 'CS', 'IT', 'ECE', 'EEE', 'MECH', 'CIVIL'];
 const YEARS = ['1', '2', '3', '4'];
@@ -205,15 +206,15 @@ export default function Calculator() {
     }));
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 py-20 px-4 md:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300 flex flex-col">
+      <PublicHeader />
+      <div className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8 space-y-8">
         
         {/* Navigation & Header */}
-        <header className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-6">
+        <header className="border-b border-zinc-200 dark:border-zinc-800 pb-6">
           <div>
-            <Link to="/" className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 hover:underline">← Back to Home</Link>
-            <h1 className="text-4xl font-extrabold tracking-tight mt-2">Academic GPA Calculator</h1>
-            <p className="text-zinc-500 mt-1">Free utility to calculate your JNTUK SGPA and CGPA results dynamically.</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Academic GPA Calculator</h1>
+            <p className="text-sm text-zinc-500 mt-1">Calculate your JNTUK SGPA and CGPA results dynamically.</p>
           </div>
         </header>
 
@@ -288,42 +289,47 @@ export default function Calculator() {
                   <Button variant="secondary" size="sm" onClick={addCustomSgpaSubject}>+ Add Custom Subject</Button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {sgpaSubjects.map((sub, idx) => (
-                    <div key={idx} className="flex gap-4 items-center flex-wrap sm:flex-nowrap">
-                      <div className="flex-1 min-w-[150px]">
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_120px_auto] gap-3 items-center border-b border-zinc-150 dark:border-zinc-850 pb-4 sm:border-none sm:pb-0">
+                      <div className="w-full">
+                        <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase sm:hidden mb-1 block">Subject Name</label>
                         <Input 
                           value={sub.name} 
                           onChange={(e) => handleSgpaChange(idx, 'name', e.target.value)}
-                          className="border-zinc-200 dark:border-zinc-800 text-sm font-semibold"
+                          className="border-zinc-200 dark:border-zinc-800 text-sm font-semibold w-full"
                         />
                       </div>
-                      <div className="w-32">
+                      <div className="w-full">
+                        <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase sm:hidden mb-1 block">Grade Point (5-10)</label>
                         <Input 
                           type="number" 
                           placeholder="Grade Point"
                           value={sub.grade}
                           onChange={(e) => handleSgpaChange(idx, 'grade', e.target.value)}
-                          className="border-zinc-200 dark:border-zinc-800 text-sm"
+                          className="border-zinc-200 dark:border-zinc-800 text-sm w-full"
                           step="1"
                         />
                       </div>
-                      <div className="w-32 flex items-center gap-2">
+                      <div className="w-full">
+                        <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase sm:hidden mb-1 block">Credits</label>
                         <Input 
                           type="number" 
                           placeholder="Credits"
                           value={sub.credits}
                           onChange={(e) => handleSgpaChange(idx, 'credits', e.target.value)}
-                          className="border-zinc-200 dark:border-zinc-800 text-sm"
+                          className="border-zinc-200 dark:border-zinc-800 text-sm w-full"
                           step="0.5"
                         />
                       </div>
-                      <button 
-                        onClick={() => removeSgpaSubject(idx)} 
-                        className="text-red-500 hover:text-red-600 text-sm font-bold px-2 py-1"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex justify-end pt-1 sm:pt-0">
+                        <button 
+                          onClick={() => removeSgpaSubject(idx)} 
+                          className="text-red-500 hover:text-red-650 text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-950/40 hover:bg-red-50 dark:hover:bg-red-950/20 sm:border-none sm:hover:bg-transparent sm:px-2 sm:py-1"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

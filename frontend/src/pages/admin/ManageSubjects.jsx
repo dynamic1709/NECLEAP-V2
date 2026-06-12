@@ -31,15 +31,36 @@ export default function ManageSubjects() {
   }, [user, navigate]);
 
   const [subjects, setSubjects] = useState([]);
-  const [branch, setBranch] = useState('');
+  const [selectedBranches, setSelectedBranches] = useState([]);
   const [year, setYear] = useState('');
   const [semester, setSemester] = useState('');
   const [subjectName, setSubjectName] = useState('');
-  const [pdfFile, setPdfFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]); // Array of { file, title }
 
   const [editingSubject, setEditingSubject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  const handleFilesChange = (e) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files).map(file => ({
+        file,
+        title: file.name.replace('.pdf', ''),
+        unit: ''
+      }));
+      setSelectedFiles([...selectedFiles, ...filesArray]);
+    }
+  };
+
+  const removeSelectedFile = (idx) => {
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== idx));
+  };
+
+  const updateFileTitle = (idx, value) => {
+    const updated = [...selectedFiles];
+    updated[idx].title = value;
+    setSelectedFiles(updated);
+  };
 
   const loadSubjects = async () => {
     try {
@@ -60,17 +81,26 @@ export default function ManageSubjects() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (selectedBranches.length === 0) {
+      setMessage('Please select at least one branch.');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
+    const branchString = `,${selectedBranches.join(',')},`;
+
     const formData = new FormData();
-    formData.append('branch', branch);
+    formData.append('branch', branchString);
     formData.append('year', year);
     formData.append('semester', semester);
     formData.append('subject_name', subjectName);
-    if (pdfFile) {
-      formData.append('pdfFile', pdfFile);
-    }
+    
+    selectedFiles.forEach((fileObj) => {
+      formData.append('pdfFiles', fileObj.file);
+      formData.append('pdfTitles', fileObj.title);
+    });
 
     try {
       if (editingSubject) {
@@ -91,14 +121,14 @@ export default function ManageSubjects() {
         });
         setMessage('Subject added successfully!');
       }
-      setBranch('');
+      setSelectedBranches([]);
       setYear('');
       setSemester('');
       setSubjectName('');
-      setPdfFile(null);
+      setSelectedFiles([]);
       
       // Reset file input element manually
-      const fileInput = document.getElementById('subject-pdf-file');
+      const fileInput = document.getElementById('subject-pdf-files');
       if (fileInput) fileInput.value = '';
 
       loadSubjects();
@@ -112,29 +142,38 @@ export default function ManageSubjects() {
 
   const startEdit = (sub) => {
     setEditingSubject(sub);
-    setBranch(sub.branch);
+    
+    // Parse branch list
+    let branchesArr = [];
+    if (sub.branch.startsWith(',') && sub.branch.endsWith(',')) {
+      branchesArr = sub.branch.split(',').filter(Boolean);
+    } else {
+      branchesArr = [sub.branch];
+    }
+    setSelectedBranches(branchesArr);
+
     setYear(sub.year);
     setSemester(sub.semester);
     setSubjectName(sub.subject_name);
-    setPdfFile(null);
+    setSelectedFiles([]);
     setMessage('');
 
     // Reset file input element manually
-    const fileInput = document.getElementById('subject-pdf-file');
+    const fileInput = document.getElementById('subject-pdf-files');
     if (fileInput) fileInput.value = '';
   };
 
   const cancelEdit = () => {
     setEditingSubject(null);
-    setBranch('');
+    setSelectedBranches([]);
     setYear('');
     setSemester('');
     setSubjectName('');
-    setPdfFile(null);
+    setSelectedFiles([]);
     setMessage('');
 
     // Reset file input element manually
-    const fileInput = document.getElementById('subject-pdf-file');
+    const fileInput = document.getElementById('subject-pdf-files');
     if (fileInput) fileInput.value = '';
   };
 
@@ -171,16 +210,32 @@ export default function ManageSubjects() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Branch</label>
-                <select 
-                  value={branch} 
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="w-full h-10 px-3 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  required
-                >
-                  <option value="">Select Branch</option>
-                  {branches.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
+                <label className="text-sm font-semibold">Map to Branches</label>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {branches.map(b => {
+                    const isSelected = selectedBranches.includes(b);
+                    return (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedBranches(selectedBranches.filter(x => x !== b));
+                          } else {
+                            setSelectedBranches([...selectedBranches, b]);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                          isSelected 
+                            ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-sm' 
+                            : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                        }`}
+                      >
+                        {b}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -221,15 +276,68 @@ export default function ManageSubjects() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold">
-                  {editingSubject ? 'Replace Notes PDF (Optional)' : 'Attach Notes PDF (Optional)'}
+                  {editingSubject ? 'Attach More Notes PDFs (Optional)' : 'Attach Notes PDFs (Optional)'}
                 </label>
                 <input 
-                  id="subject-pdf-file"
+                  id="subject-pdf-files"
                   type="file" 
                   accept="application/pdf"
-                  onChange={(e) => setPdfFile(e.target.files[0])}
-                  className="w-full text-sm border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 dark:file:bg-zinc-800 file:text-zinc-700 dark:file:text-zinc-300 hover:file:bg-zinc-200"
+                  multiple
+                  onChange={handleFilesChange}
+                  className="w-full text-sm border border-zinc-200 dark:border-zinc-800 rounded-md bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 dark:file:bg-zinc-800 file:text-zinc-700 dark:file:text-zinc-300 hover:file:bg-zinc-200 cursor-pointer"
                 />
+
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2 mt-2.5 p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-60 overflow-y-auto">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Files to Upload ({selectedFiles.length})</span>
+                    {selectedFiles.map((f, idx) => (
+                      <div key={idx} className="space-y-1.5 p-2 bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 rounded-lg">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="truncate max-w-[150px] font-semibold text-zinc-500">{f.file.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => removeSelectedFile(idx)} 
+                            className="text-red-500 hover:text-red-655 font-bold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <select
+                            value={f.unit || ''}
+                            onChange={(e) => {
+                              const updated = [...selectedFiles];
+                              updated[idx].unit = e.target.value;
+                              if (e.target.value && e.target.value !== 'Other') {
+                                const cleanTitle = f.title.replace(/^Unit \d+:?\s*/i, '');
+                                updated[idx].title = `${e.target.value}${cleanTitle ? `: ${cleanTitle}` : ''}`;
+                              }
+                              setSelectedFiles(updated);
+                            }}
+                            className="h-8 text-xs border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-black"
+                          >
+                            <option value="">Select Unit</option>
+                            <option value="Unit 1">Unit 1</option>
+                            <option value="Unit 2">Unit 2</option>
+                            <option value="Unit 3">Unit 3</option>
+                            <option value="Unit 4">Unit 4</option>
+                            <option value="Unit 5">Unit 5</option>
+                            <option value="Unit 6">Unit 6</option>
+                            <option value="Other">Other</option>
+                          </select>
+                          <div className="col-span-2">
+                            <Input 
+                              placeholder="PDF Title" 
+                              value={f.title}
+                              onChange={(e) => updateFileTitle(idx, e.target.value)}
+                              className="h-8 text-xs border-zinc-200 dark:border-zinc-800 focus:ring-black focus:border-black"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {message && <p className="text-sm text-green-600 font-semibold">{message}</p>}
@@ -271,9 +379,16 @@ export default function ManageSubjects() {
                     <tr key={sub.id}>
                       <td className="p-4 font-bold text-zinc-900 dark:text-zinc-100">{sub.subject_name}</td>
                       <td className="p-4">
-                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                          {sub.branch}
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {(sub.branch.startsWith(',') && sub.branch.endsWith(',') 
+                            ? sub.branch.split(',').filter(Boolean)
+                            : [sub.branch]
+                          ).map(b => (
+                            <span key={b} className="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                              {b}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="p-4 text-zinc-500">Year {sub.year} • Sem {sub.semester}</td>
                       <td className="p-4 text-right space-x-2">

@@ -6,6 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Link } from 'react-router-dom';
+import PublicHeader from '../../components/layout/PublicHeader';
+import { downloadPdf } from '../../lib/downloadHelper';
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,13 +55,13 @@ export default function Search() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 py-20 px-4 md:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300 flex flex-col">
+      <PublicHeader />
+      <div className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8 space-y-8">
         
-        <header className="flex flex-col gap-2">
-          <Link to="/" className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 hover:underline">← Back to Home</Link>
-          <h1 className="text-4xl font-extrabold tracking-tight">Search Platform Resources</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Instantly look up titles, subjects, teachers, branches, or notes.</p>
+        <header className="flex flex-col gap-1.5">
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Search Platform Resources</h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Instantly look up titles, subjects, teachers, branches, or notes.</p>
         </header>
 
         <form onSubmit={handleSearchSubmit} className="flex gap-2">
@@ -117,32 +119,44 @@ export default function Search() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {results.map(pdf => (
-                  <Card key={pdf.id} className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-md transition-shadow">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                          {pdf.branch} • Year {pdf.year}
-                        </span>
-                        <span className="text-xs text-zinc-400">{pdf.subject}</span>
+                {results.map(pdf => {
+                  const cleanBranchDisplay = pdf.branch && pdf.branch.startsWith(',') && pdf.branch.endsWith(',')
+                    ? pdf.branch.split(',').filter(Boolean).join(', ')
+                    : pdf.branch;
+                  const firstBranch = pdf.branch && pdf.branch.startsWith(',') && pdf.branch.endsWith(',')
+                    ? pdf.branch.split(',').filter(Boolean)[0]
+                    : pdf.branch;
+                  
+                  return (
+                    <Card key={pdf.id} className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-md transition-shadow">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                            {cleanBranchDisplay} • Year {pdf.year}
+                          </span>
+                          <span className="text-xs text-zinc-400">{pdf.subject}</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{pdf.pdf_title}</h3>
+                        <p className="text-sm text-zinc-500 mt-1">Uploaded by: {pdf.teacher_name}</p>
                       </div>
-                      <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{pdf.pdf_title}</h3>
-                      <p className="text-sm text-zinc-500 mt-1">Uploaded by: {pdf.teacher_name}</p>
-                    </div>
-                    <div className="flex gap-2 w-full md:w-auto">
-                      <Link to={`/pdf/${pdf.slug}`} className="flex-1 md:flex-initial">
-                        <Button size="sm" className="w-full bg-black text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100">
-                          View
-                        </Button>
-                      </Link>
-                      <a href={pdf.storage_url} download className="flex-1 md:flex-initial">
-                        <Button size="sm" variant="secondary" className="w-full border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      <div className="flex gap-2 w-full md:w-auto">
+                        <Link to={`/pdf/${pdf.slug}${firstBranch ? `?branch=${firstBranch}` : ''}`} className="flex-1 md:flex-initial">
+                          <Button size="sm" className="w-full bg-black text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100">
+                            View
+                          </Button>
+                        </Link>
+                        <Button 
+                          onClick={() => downloadPdf(pdf)}
+                          size="sm" 
+                          variant="secondary" 
+                          className="flex-1 md:flex-initial border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        >
                           Download
                         </Button>
-                      </a>
-                    </div>
-                  </Card>
-                ))}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

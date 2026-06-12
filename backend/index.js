@@ -21,7 +21,7 @@ app.use(helmet({
   frameguard: false, // Disable X-Frame-Options to allow local fallback PDF iframe embeds
 }));
 app.use(cors({
-  origin: '*',
+  origin: process.env.CORS_ORIGIN || '*',
   credentials: true
 }));
 app.use(express.json());

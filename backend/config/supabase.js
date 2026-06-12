@@ -13,7 +13,12 @@ const supabaseKey = serviceKey && !serviceKey.includes('placeholder') && !servic
   : anonKey;
 
 if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your_supabase_url_here') {
-  console.warn('Supabase URL or Key is missing. Supabase will not function correctly.');
+  console.warn('⚠️  Supabase URL or Key is missing. Supabase will not function correctly.');
+}
+
+if (!serviceKey || serviceKey.includes('placeholder') || serviceKey.includes('your_supabase_service_role_key_here')) {
+  console.warn('⚠️  SUPABASE_SERVICE_ROLE_KEY is not set. PDF uploads will use anon key fallback (may cause permission issues in production).');
+  console.warn('   Set your service role key from Supabase Dashboard → Settings → API → Service Role Key');
 }
 
 // Create a single supabase client for interacting with your database

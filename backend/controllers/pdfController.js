@@ -4,9 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
-const generateSlug = (teacherName, branch, subject, title) => {
-    const cleanStr = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return `${cleanStr(teacherName)}_${cleanStr(branch)}_${cleanStr(subject)}_${cleanStr(title)}_notes`;
+const generateSlug = (teacherName, subject, title) => {
+    const cleanStr = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    return `${cleanStr(teacherName)}_${cleanStr(subject)}_${cleanStr(title)}`;
 };
 
 const deleteFileFromStorage = async (supabase, storageUrl) => {
@@ -61,6 +61,11 @@ const uploadPdf = async (req, res) => {
 
         const { teacher_name, branch, year, semester, subject, pdf_title, description } = req.body;
 
+        // Validation checks
+        if (!branch || !year || !semester || !subject || !pdf_title) {
+            return res.status(400).json({ message: 'Missing required fields: branch, year, semester, subject, and pdf_title are all required.' });
+        }
+
         let viewUrl = '';
 
         const hasSupabaseConfig = process.env.SUPABASE_URL &&
@@ -71,7 +76,8 @@ const uploadPdf = async (req, res) => {
         if (hasSupabaseConfig) {
             try {
                 const cleanSubject = subject.toLowerCase().replace(/[^a-z0-9]/g, '');
-                const fileName = `${uuidv4()}-${req.file.originalname}`;
+                const safeOriginalName = req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                const fileName = `${uuidv4()}-${safeOriginalName}`;
                 const storagePath = `${branch.toLowerCase()}/${year}-${semester}/${cleanSubject}/${fileName}`;
 
                 // 1. Upload to Supabase Storage
@@ -101,7 +107,8 @@ const uploadPdf = async (req, res) => {
             if (!fs.existsSync(uploadDir)) {
                 fs.mkdirSync(uploadDir, { recursive: true });
             }
-            const fileName = `${uuidv4()}-${req.file.originalname}`;
+            const safeOriginalName = req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            const fileName = `${uuidv4()}-${safeOriginalName}`;
             const filePath = path.join(uploadDir, fileName);
             fs.writeFileSync(filePath, req.file.buffer);
 
@@ -127,7 +134,7 @@ const uploadPdf = async (req, res) => {
                 await supabase
                     .from('subjects')
                     .insert([{
-                        branch,
+                        branch: branch.startsWith(',') && branch.endsWith(',') ? branch : `,${branch},`,
                         year,
                         semester,
                         subject_name: subject
@@ -137,19 +144,60 @@ const uploadPdf = async (req, res) => {
             console.error('Failed to auto-register subject:', subErr.message);
         }
 
-        // 2. Save metadata to Supabase
-        const slug = generateSlug(teacher_name, branch, subject, pdf_title);
+        // 2. Save metadata to Supabase (Merge branches for same subject if mapped)
+        let mappedBranch = branch;
+        try {
+            const { data: matchedSubjects } = await supabase
+                .from('subjects')
+                .select('branch')
+                .eq('year', year)
+                .eq('semester', semester)
+                .ilike('subject_name', subject);
+
+            if (matchedSubjects && matchedSubjects.length > 0) {
+                const branchSet = new Set();
+                if (branch && typeof branch === 'string') {
+                    if (branch.startsWith(',') && branch.endsWith(',')) {
+                        branch.split(',').filter(Boolean).forEach(b => branchSet.add(b));
+                    } else {
+                        branchSet.add(branch);
+                    }
+                }
+
+                for (const sub of matchedSubjects) {
+                    if (sub.branch && typeof sub.branch === 'string') {
+                        if (sub.branch.startsWith(',') && sub.branch.endsWith(',')) {
+                            sub.branch.split(',').filter(Boolean).forEach(b => branchSet.add(b));
+                        } else {
+                            branchSet.add(sub.branch);
+                        }
+                    }
+                }
+                mappedBranch = `,${Array.from(branchSet).join(',')},`;
+            } else {
+                if (branch && typeof branch === 'string' && !branch.startsWith(',')) {
+                    mappedBranch = `,${branch},`;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to lookup matched subjects for branches:', err.message);
+            if (branch && typeof branch === 'string' && !branch.startsWith(',')) {
+                mappedBranch = `,${branch},`;
+            }
+        }
+
+        const slug = `${generateSlug(teacher_name, subject, pdf_title)}_${uuidv4().substring(0, 6)}`;
 
         const { data, error } = await supabase
             .from('pdfs')
             .insert([{
                 teacher_name,
-                branch,
+                branch: mappedBranch,
                 year,
                 semester,
                 subject,
                 pdf_title,
-                description,
+                description: description || '',
                 slug,
                 storage_url: viewUrl,
                 status: 'Approved',
@@ -181,7 +229,6 @@ const getPdfs = async (req, res) => {
         // Apply filters
         const { branch, year, semester, subject, search, status } = req.query;
 
-        if (branch) query = query.eq('branch', branch);
         if (year) query = query.eq('year', year);
         if (semester) query = query.eq('semester', semester);
         if (subject) query = query.eq('subject', subject);
@@ -198,9 +245,20 @@ const getPdfs = async (req, res) => {
         }
 
         const { data, error } = await query.order('uploaded_at', { ascending: false });
-
         if (error) throw error;
-        res.status(200).json(data);
+
+        let filteredData = data;
+        if (branch) {
+            filteredData = data.filter(pdf => {
+                if (!pdf.branch) return false;
+                if (pdf.branch.startsWith(',') && pdf.branch.endsWith(',')) {
+                    return pdf.branch.split(',').filter(Boolean).includes(branch);
+                }
+                return pdf.branch === branch;
+            });
+        }
+
+        res.status(200).json(filteredData);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -263,6 +321,7 @@ const deletePdf = async (req, res) => {
             return res.status(404).json({ message: 'PDF not found' });
         }
 
+        // Super admin can delete any PDF; teacher_admin can only delete their own
         if (req.user.role !== 'super_admin' && pdf.uploaded_by !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized to delete this PDF' });
         }
@@ -293,7 +352,7 @@ const getAdminPdfs = async (req, res) => {
         const supabase = getClient(req);
         let query = supabase.from('pdfs').select('*');
 
-        // Non-super_admins can only manage their own PDFs
+        // Super admin sees ALL PDFs; teacher_admin sees only their own uploads
         if (req.user.role !== 'super_admin') {
             query = query.eq('uploaded_by', req.user.id);
         }
@@ -307,4 +366,111 @@ const getAdminPdfs = async (req, res) => {
     }
 };
 
-module.exports = { uploadPdf, getPdfs, approvePdf, getPdfBySlug, deletePdf, getAdminPdfs, deleteFileFromStorage };
+const updatePdf = async (req, res) => {
+    try {
+        const supabase = getClient(req);
+        const { id } = req.params;
+        const { teacher_name, branch, year, semester, subject, pdf_title, description, status } = req.body;
+
+        // Validation checks
+        if (!branch || !year || !semester || !subject || !pdf_title) {
+            return res.status(400).json({ message: 'Missing required fields: branch, year, semester, subject, and pdf_title are all required.' });
+        }
+
+        // 1. Fetch current PDF metadata
+        const { data: oldPdf, error: fetchError } = await supabase
+            .from('pdfs')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (fetchError || !oldPdf) {
+            return res.status(404).json({ message: 'PDF not found' });
+        }
+
+        // Super admin can edit any PDF; teacher_admin can only edit their own
+        if (req.user.role !== 'super_admin' && oldPdf.uploaded_by !== req.user.id) {
+            return res.status(403).json({ message: 'Not authorized to edit this PDF' });
+        }
+
+        // 2. Format mapped branch list
+        let mappedBranch = branch;
+        try {
+            const { data: matchedSubjects } = await supabase
+                .from('subjects')
+                .select('branch')
+                .eq('year', year)
+                .eq('semester', semester)
+                .ilike('subject_name', subject);
+
+            if (matchedSubjects && matchedSubjects.length > 0) {
+                const branchSet = new Set();
+                if (branch && typeof branch === 'string') {
+                    if (branch.startsWith(',') && branch.endsWith(',')) {
+                        branch.split(',').filter(Boolean).forEach(b => branchSet.add(b));
+                    } else {
+                        branchSet.add(branch);
+                    }
+                }
+
+                for (const sub of matchedSubjects) {
+                    if (sub.branch && typeof sub.branch === 'string') {
+                        if (sub.branch.startsWith(',') && sub.branch.endsWith(',')) {
+                            sub.branch.split(',').filter(Boolean).forEach(b => branchSet.add(b));
+                        } else {
+                            branchSet.add(sub.branch);
+                        }
+                    }
+                }
+                mappedBranch = `,${Array.from(branchSet).join(',')},`;
+            } else {
+                if (branch && typeof branch === 'string' && !branch.startsWith(',')) {
+                    mappedBranch = `,${branch},`;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to lookup matched subjects for branches:', err.message);
+            if (branch && typeof branch === 'string' && !branch.startsWith(',')) {
+                mappedBranch = `,${branch},`;
+            }
+        }
+
+        const slug = `${generateSlug(teacher_name, subject, pdf_title)}_${uuidv4().substring(0, 6)}`;
+
+        const updateData = {
+            teacher_name,
+            branch: mappedBranch,
+            year,
+            semester,
+            subject,
+            pdf_title,
+            description: description || '',
+            slug
+        };
+
+        if (status) {
+            updateData.status = status;
+        }
+
+        const { data, error } = await supabase
+            .from('pdfs')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        await supabase.from('activity_logs').insert([{
+            user_id: req.user.id,
+            action: `Updated PDF: ${pdf_title}`
+        }]);
+
+        res.status(200).json({ message: 'Update successful', data });
+    } catch (error) {
+        console.error('Update PDF Error:', error);
+        res.status(500).json({ message: 'Server error during PDF update', error: error.message });
+    }
+};
+
+module.exports = { uploadPdf, getPdfs, approvePdf, getPdfBySlug, deletePdf, getAdminPdfs, updatePdf, deleteFileFromStorage };
