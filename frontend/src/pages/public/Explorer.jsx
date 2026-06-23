@@ -25,7 +25,9 @@ export default function Explorer() {
     queryFn: async () => {
       const res = await axios.get(`${API_URL}/branches`);
       return res.data.map(b => (typeof b === 'string' ? b : b.name));
-    }
+    },
+    staleTime: 0,
+    gcTime: 0
   });
 
   useEffect(() => {
@@ -54,7 +56,9 @@ export default function Explorer() {
       });
       return res.data;
     },
-    enabled: !!(selectedBranch && selectedYear && selectedSemester)
+    enabled: !!(selectedBranch && selectedYear && selectedSemester),
+    staleTime: 0,
+    gcTime: 0
   });
 
   // Fetch PDFs from server
@@ -73,7 +77,9 @@ export default function Explorer() {
       });
       return res.data;
     },
-    enabled: !!(selectedBranch && selectedYear && selectedSemester && selectedSubject)
+    enabled: !!(selectedBranch && selectedYear && selectedSemester && selectedSubject),
+    staleTime: 0,
+    gcTime: 0
   });
 
   return (
