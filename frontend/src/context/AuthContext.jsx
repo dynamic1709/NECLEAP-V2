@@ -5,7 +5,18 @@ const AuthContext = createContext({});
 
 // Determine standard API URL dynamically
 const getApiUrl = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
+  let envUrl = import.meta.env.VITE_API_URL;
+  
+  if (envUrl) {
+    envUrl = envUrl.trim();
+    if (envUrl.endsWith('/')) {
+      envUrl = envUrl.slice(0, -1);
+    }
+    if (!envUrl.endsWith('/api')) {
+      envUrl = `${envUrl}/api`;
+    }
+  }
+
   if (typeof window !== 'undefined') {
     const { hostname, origin } = window.location;
     // If the host is NOT localhost/127.0.0.1, we are in production.
