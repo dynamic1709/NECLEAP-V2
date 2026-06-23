@@ -3,8 +3,23 @@ import axios from 'axios';
 
 const AuthContext = createContext({});
 
-// Use standard API URL (fallback to localhost:5000 if not set)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Determine standard API URL dynamically
+const getApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    const { hostname, origin } = window.location;
+    // If the host is NOT localhost/127.0.0.1, we are in production.
+    // Ensure we do not use localhost URL even if hardcoded in the env.
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+        return `${origin}/api`;
+      }
+    }
+  }
+  return envUrl || 'http://localhost:5000/api';
+};
+
+const API_URL = getApiUrl();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

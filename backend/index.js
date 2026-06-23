@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 
 // Load env vars
 dotenv.config();
@@ -44,8 +45,31 @@ app.use('/api/branches', require('./routes/branchRoutes'));
 app.use('/api/subjects', require('./routes/subjectRoutes'));
 app.use('/api/teachers', require('./routes/teacherRoutes'));
 
-app.get('/', (req, res) => {
-  res.send('NECLEAP API is running...');
+// Serve static files from the React frontend app
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendDistPath, {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    // Disable caching for index.html so updates are fetched immediately
+    if (path.basename(filePath) === 'index.html') {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+  }
+}));
+
+// Handle React SPA routing - redirect all non-API requests to index.html
+app.get('/*any', (req, res) => {
+  // If the request is for an API route that wasn't matched, return 404
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(404).json({ message: 'API route not found' });
+  }
+  const indexPath = path.join(frontendDistPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.sendFile(indexPath);
+  } else {
+    res.send('NECLEAP API is running... (Frontend build not found)');
+  }
 });
 
 const PORT = process.env.PORT || 5000;
