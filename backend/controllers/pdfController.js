@@ -326,10 +326,6 @@ const deletePdf = async (req, res) => {
             return res.status(404).json({ message: 'PDF not found' });
         }
 
-        // Super admin can delete any PDF; teacher_admin can only delete their own
-        if (req.user.role !== 'super_admin' && pdf.uploaded_by !== req.user.id) {
-            return res.status(403).json({ message: 'Not authorized to delete this PDF' });
-        }
 
         // Delete file from Supabase storage or local uploads
         await deleteFileFromStorage(supabase, pdf.storage_url);
@@ -357,10 +353,6 @@ const getAdminPdfs = async (req, res) => {
         const supabase = getClient(req);
         let query = supabase.from('pdfs').select('*');
 
-        // Super admin sees ALL PDFs; teacher_admin sees only their own uploads
-        if (req.user.role !== 'super_admin') {
-            query = query.eq('uploaded_by', req.user.id);
-        }
 
         const { data, error } = await query.order('uploaded_at', { ascending: false });
 
@@ -394,10 +386,6 @@ const updatePdf = async (req, res) => {
             return res.status(404).json({ message: 'PDF not found' });
         }
 
-        // Super admin can edit any PDF; teacher_admin can only edit their own
-        if (req.user.role !== 'super_admin' && oldPdf.uploaded_by !== req.user.id) {
-            return res.status(403).json({ message: 'Not authorized to edit this PDF' });
-        }
 
         // 2. Format mapped branch list
         let mappedBranch = branch;
