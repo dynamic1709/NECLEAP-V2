@@ -14,6 +14,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy for Render/reverse proxies to detect HTTPS correctly
+app.set('trust proxy', true);
+
 // Security Middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,

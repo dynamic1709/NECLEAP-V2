@@ -175,7 +175,7 @@ export default function ManagePdfs() {
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                   <th className="p-4">Title / Subject</th>
-                  <th className="p-4">Teacher</th>
+                  <th className="p-4">Author / Teacher</th>
                   <th className="p-4">Academic Category</th>
                   <th className="p-4">Downloads</th>
                   <th className="p-4 text-right">Actions</th>
