@@ -37,7 +37,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 10000 : 100 // Increase limit to 10000 in dev
+  max: process.env.NODE_ENV === 'development' ? 10000 : 100, // Increase limit to 10000 in dev
+  validate: { trustProxy: false }
 });
 app.use('/api/', limiter);
 

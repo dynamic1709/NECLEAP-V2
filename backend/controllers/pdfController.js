@@ -352,8 +352,6 @@ const getAdminPdfs = async (req, res) => {
     try {
         const supabase = getClient(req);
         let query = supabase.from('pdfs').select('*');
-
-
         const { data, error } = await query.order('uploaded_at', { ascending: false });
 
         if (error) throw error;
