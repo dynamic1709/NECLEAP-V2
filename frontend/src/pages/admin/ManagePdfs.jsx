@@ -246,7 +246,7 @@ export default function ManagePdfs() {
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-500">Teacher Name</label>
+                    <label className="text-xs font-semibold text-zinc-500">Author / Teacher Name</label>
                     <Input 
                       value={editTeacherName} 
                       onChange={(e) => setEditTeacherName(e.target.value)} 

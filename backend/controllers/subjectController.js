@@ -5,9 +5,13 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
-const generateSlug = (teacherName, subject, title) => {
-    const cleanStr = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    return `${cleanStr(teacherName)}_${cleanStr(subject)}_${cleanStr(title)}`;
+const generateSlug = (authorName, pdfTitle, branch) => {
+    const cleanPart = (str) => (str || '').trim().replace(/[^a-zA-Z0-9]/g, '');
+    let cleanBranch = branch || '';
+    if (cleanBranch.startsWith(',') && cleanBranch.endsWith(',')) {
+        cleanBranch = cleanBranch.split(',').filter(Boolean)[0] || '';
+    }
+    return `${cleanPart(authorName)}_${cleanPart(pdfTitle)}_${cleanPart(cleanBranch)}`;
 };
 
 const getSubjects = async (req, res) => {
@@ -108,7 +112,7 @@ const addSubject = async (req, res) => {
                 }
 
                 const teacher_name = req.user.name || req.user.email || 'Admin';
-                const baseSlug = generateSlug(teacher_name, subject_name, pdf_title);
+                const baseSlug = generateSlug(teacher_name, pdf_title, branch);
                 const slug = `${baseSlug}_${uuidv4().substring(0, 6)}`;
 
                 const { error: insertPdfError } = await supabase
@@ -240,7 +244,7 @@ const updateSubject = async (req, res) => {
                 }
 
                 const teacher_name = req.user.name || req.user.email || 'Admin';
-                const baseSlug = generateSlug(teacher_name, subject_name, pdf_title);
+                const baseSlug = generateSlug(teacher_name, pdf_title, branch);
                 const slug = `${baseSlug}_${uuidv4().substring(0, 6)}`;
 
                 const { error: insertPdfError } = await supabase

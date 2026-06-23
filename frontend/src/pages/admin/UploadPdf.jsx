@@ -14,6 +14,7 @@ export default function UploadPdf() {
   const { token, user } = useAuth();
   
   const [file, setFile] = useState(null);
+  const [authorName, setAuthorName] = useState('');
   const [teacherName, setTeacherName] = useState(user?.name || '');
   const [branch, setBranch] = useState('');
   const [year, setYear] = useState('');
@@ -93,6 +94,7 @@ export default function UploadPdf() {
 
     const formData = new FormData();
     formData.append('pdfFile', file);
+    formData.append('author_name', authorName);
     formData.append('teacher_name', teacherName);
     formData.append('branch', branch);
     formData.append('year', year);
@@ -123,6 +125,7 @@ export default function UploadPdf() {
       
       // Reset form
       setFile(null);
+      setAuthorName('');
       setUnit('');
       setTitle('');
       setDescription('');
@@ -195,11 +198,23 @@ export default function UploadPdf() {
             {/* Inputs Grid */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Teacher Name</label>
+                <label className="text-sm font-semibold">Author Name</label>
+                <Input 
+                  placeholder="e.g. Dr. K. Srinivasa Rao"
+                  value={authorName} 
+                  onChange={(e) => setAuthorName(e.target.value)} 
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Teacher / Uploader Name</label>
                 <Input 
                   value={teacherName} 
                   onChange={(e) => setTeacherName(e.target.value)} 
                   required
+                  disabled
+                  className="bg-zinc-50 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed"
                 />
               </div>
 

@@ -4,9 +4,13 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
-const generateSlug = (teacherName, subject, title) => {
-    const cleanStr = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    return `${cleanStr(teacherName)}_${cleanStr(subject)}_${cleanStr(title)}`;
+const generateSlug = (authorName, pdfTitle, branch) => {
+    const cleanPart = (str) => (str || '').trim().replace(/[^a-zA-Z0-9]/g, '');
+    let cleanBranch = branch || '';
+    if (cleanBranch.startsWith(',') && cleanBranch.endsWith(',')) {
+        cleanBranch = cleanBranch.split(',').filter(Boolean)[0] || '';
+    }
+    return `${cleanPart(authorName)}_${cleanPart(pdfTitle)}_${cleanPart(cleanBranch)}`;
 };
 
 const deleteFileFromStorage = async (supabase, storageUrl) => {
@@ -59,7 +63,8 @@ const uploadPdf = async (req, res) => {
             return res.status(400).json({ message: 'No file provided' });
         }
 
-        const { teacher_name, branch, year, semester, subject, pdf_title, description } = req.body;
+        const { teacher_name, author_name, branch, year, semester, subject, pdf_title, description } = req.body;
+        const finalAuthor = author_name || teacher_name || 'Admin';
 
         // Validation checks
         if (!branch || !year || !semester || !subject || !pdf_title) {
@@ -186,12 +191,12 @@ const uploadPdf = async (req, res) => {
             }
         }
 
-        const slug = `${generateSlug(teacher_name, subject, pdf_title)}_${uuidv4().substring(0, 6)}`;
+        const slug = `${generateSlug(finalAuthor, pdf_title, branch)}_${uuidv4().substring(0, 6)}`;
 
         const { data, error } = await supabase
             .from('pdfs')
             .insert([{
-                teacher_name,
+                teacher_name: finalAuthor,
                 branch: mappedBranch,
                 year,
                 semester,
@@ -370,7 +375,8 @@ const updatePdf = async (req, res) => {
     try {
         const supabase = getClient(req);
         const { id } = req.params;
-        const { teacher_name, branch, year, semester, subject, pdf_title, description, status } = req.body;
+        const { teacher_name, author_name, branch, year, semester, subject, pdf_title, description, status } = req.body;
+        const finalAuthor = author_name || teacher_name || 'Admin';
 
         // Validation checks
         if (!branch || !year || !semester || !subject || !pdf_title) {
@@ -435,10 +441,10 @@ const updatePdf = async (req, res) => {
             }
         }
 
-        const slug = `${generateSlug(teacher_name, subject, pdf_title)}_${uuidv4().substring(0, 6)}`;
+        const slug = `${generateSlug(finalAuthor, pdf_title, branch)}_${uuidv4().substring(0, 6)}`;
 
         const updateData = {
-            teacher_name,
+            teacher_name: finalAuthor,
             branch: mappedBranch,
             year,
             semester,
